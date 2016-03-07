@@ -26,6 +26,11 @@ def test_special_a_salad_instead_of_kimchi():
     assert 'Special A - salad' == get_item(message)
 
 
+def test_instead_of_in_beginning():
+    message = u'instead of kimchi, i want salad with my special A'
+    assert 'Special A - salad' == get_item(message)
+
+
 def test_special_a_please():
     message = u'special A, please!'
     assert 'Special A' in get_item(message)

@@ -148,7 +148,10 @@ def clean_text(text):
     text = text.replace('kimchi', 'kimchee')
 
     # ignore everything after "instead of"
-    text = text.split('instead of')[0]
+    if text.startswith('instead of'):
+        text = text.split(',')[1]
+    else:
+        text = text.split('instead of')[0]
     return text
 
 
