@@ -1,3 +1,4 @@
+import logging
 import json
 import time
 
@@ -19,6 +20,13 @@ TAX_RATE = 0.07
 TIP_RATE = 0.10
 settings = adverplex.settings.Settings()
 slack = slacker.Slacker(settings.value('koreana/slack', required=True))
+
+logger = logging.getLogger('koreana-bot')
+handler = logging.StreamHandler()
+formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
+handler.setFormatter(formatter)
+logger.addHandler(handler)
+logger.setLevel(logging.DEBUG)
 
 MESSAGES = {
     'welcome': (
@@ -168,7 +176,8 @@ def get_item(text, user=None):
             option, _ = process.extractOne(text, OPTIONS[item])
             item += " - " + option
         if user:
-            print(get_user_name(user), text, item, confidence)
+            logger.debug('[%s%%] "%s" => %s (%s)',
+                         confidence, text, item, get_user_name(user))
         return item
     else:
         return None
