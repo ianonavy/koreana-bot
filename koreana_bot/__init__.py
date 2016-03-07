@@ -1,16 +1,20 @@
 import logging
 import json
 import time
+import threading
 
 import arrow
 import pandas
 import slacker
 import adverplex.settings
 from fuzzywuzzy import process
+from slacksocket import SlackSocket
 
 
 POST_CHANNEL = '#ian-test-group'
+LISTEN_CHANNEL = 'ian-test-group'
 GROUP_NAME = 'koreana-thursday'
+BOT_USER_ID = 'U0QNJ680G'
 WINDOW_SIZE_SECONDS = 86400 * 5
 ORDER_TIME_MINUTES = 60
 CONFIDENCE_THRESHOLD = 70
@@ -19,7 +23,8 @@ FINAL_WARNING = 5
 TAX_RATE = 0.07
 TIP_RATE = 0.10
 settings = adverplex.settings.Settings()
-slack = slacker.Slacker(settings.value('koreana/slack', required=True))
+SLACK_TOKEN = settings.value('koreana/slack', required=True)
+slack = slacker.Slacker(SLACK_TOKEN)
 
 logger = logging.getLogger('koreana-bot')
 handler = logging.StreamHandler()
@@ -65,6 +70,19 @@ MESSAGES = {
     'no order': (
         "Sorry folks, it's not happening today!"
     ),
+    'already started': (
+        "We've already started!"
+    ),
+    'option unsure': (
+        "<@{user}>: I'm assuming you want {option}. Say your order again if "
+        "I'm wrong."
+    ),
+    'cancelled': (
+        "<@{user}>: I cancelled your order"
+    ),
+    'changed': (
+        "<@{user}>: I changed your order to \"{item}\""
+    )
 }
 
 PRICES = {
@@ -173,24 +191,17 @@ def get_item(text, user=None):
     item = MENU_ITEMS[item]
     if confidence > CONFIDENCE_THRESHOLD:
         if item in OPTIONS:
-            option, _ = process.extractOne(text, OPTIONS[item])
+            option, option_confidence = process.extractOne(text, OPTIONS[item])
             item += " - " + option
+            if user and option_confidence < CONFIDENCE_THRESHOLD:
+                notify_slack(MESSAGES['option unsure'].format(user=user,
+                                                              option=option))
         if user:
             logger.debug('[%s%%] "%s" => %s (%s)',
                          confidence, text, item, get_user_name(user))
         return item
     else:
         return None
-
-
-def cost_distribution(orders):
-    columns = ['name', 'item']
-    costs = pandas.DataFrame(orders, columns=columns)
-    costs['price'] = costs['item'].map(PRICES)
-    costs['tax'] = costs['price'] * TAX_RATE
-    costs['tip'] = costs['price'] * TIP_RATE
-    costs['total'] = costs['price'] + costs['tax'] + costs['tip']
-    return costs
 
 
 def fetch_messages():
@@ -200,28 +211,34 @@ def fetch_messages():
     return reversed(res.body['messages'])
 
 
-def parse_orders(messages):
-    messages = list(messages) + [{
-        'user': "U04RC8EHW",
-        'text': "cancel my order, please!"
-    }]
-    orders = {}
+def _order_changed(orders, name, item):
+    return name in orders and orders[name]['item'] != item
+
+
+def add_orders(orders, messages):
     for message in messages:
-        item = get_item(message['text'], message['user'])
+        user = message['user']
+        item = get_item(message['text'], user)
         if item:
-            name = get_user_name(message['user'])
-            if item == 'Cancel':
-                if name in orders:
-                    del orders[name]
-            else:
-                orders[name] = {'name': name, 'item': item}
-    return sorted(orders.values(), key=lambda order: order['name'])
+            name = get_user_name(user)
+            if item == 'Cancel' and name in orders:
+                del orders[name]
+                notify_slack(MESSAGES['cancelled'].format(user=user))
+                continue
+            if _order_changed(orders, name, item):
+                notify_slack(MESSAGES['changed'].format(user=user, item=item))
+            orders[name] = {'name': name, 'item': item}
+    return orders
 
 
-def get_costs():
-    messages = fetch_messages()
-    orders = parse_orders(messages)
-    costs = cost_distribution(orders)
+def get_costs(orders):
+    order_list = sorted(orders.values(), key=lambda order: order['name'])
+    columns = ['name', 'item']
+    costs = pandas.DataFrame(order_list, columns=columns)
+    costs['price'] = costs['item'].map(PRICES)
+    costs['tax'] = costs['price'] * TAX_RATE
+    costs['tip'] = costs['price'] * TIP_RATE
+    costs['total'] = costs['price'] + costs['tax'] + costs['tip']
     return costs
 
 
@@ -232,23 +249,6 @@ def post_costs(costs):
         message = "```{}```".format(costs.to_string(index=False,
                                                     justify='left'))
     notify_slack(message)
-
-
-def print_warnings():
-    for cur_min in range(ORDER_TIME_MINUTES):
-        minutes_left = ORDER_TIME_MINUTES - cur_min
-
-        if minutes_left in WARNING_MINUTES:
-            message_format = MESSAGES['n minutes warning']
-            notify_slack(message_format.format(minutes=minutes_left))
-
-        if minutes_left == FINAL_WARNING:
-            notify_slack(MESSAGES['n minutes warning'].format(minutes=5))
-            costs = get_costs()
-            notify_slack(MESSAGES['final changes'])
-            post_costs(costs)
-            notify_slack(MESSAGES['disclaimer'])
-        time.sleep(60)
 
 
 def get_full_order_message(quantities):
@@ -276,13 +276,27 @@ def get_full_order_message(quantities):
     return message
 
 
-def main():
+def countdown(orders):
     deadline = arrow.now().replace(minutes=ORDER_TIME_MINUTES).format("h:mma")
-
     notify_slack(MESSAGES['welcome'].format(deadline=deadline))
-    print_warnings()
 
-    costs = get_costs()
+    for cur_min in range(ORDER_TIME_MINUTES):
+        minutes_left = ORDER_TIME_MINUTES - cur_min
+
+        if minutes_left in WARNING_MINUTES:
+            message_format = MESSAGES['n minutes warning']
+            notify_slack(message_format.format(minutes=minutes_left))
+
+        if minutes_left == FINAL_WARNING:
+            notify_slack(MESSAGES['n minutes warning'].format(minutes=5))
+            costs = get_costs(orders)
+            notify_slack(MESSAGES['final changes'])
+            post_costs(costs)
+            notify_slack(MESSAGES['disclaimer'])
+        time.sleep(1)
+
+    costs = get_costs(orders)
+
     notify_slack(MESSAGES['closed'])
     if costs.empty:
         notify_slack(MESSAGES['no order'])
@@ -297,3 +311,39 @@ def main():
         quantities = costs.groupby('item').size()
         message = get_full_order_message(quantities)
         notify_slack(MESSAGES['place order'].format(message=message))
+
+
+def main():
+    orders = {}
+
+    # fetch historical
+    # messages = fetch_messages()
+    # orders = add_orders(orders, messages)
+
+    listen_group_id, _ = _get_group_or_channel_id(LISTEN_CHANNEL)
+    started = False
+    t = threading.Thread(target=countdown, args=(orders,))
+
+    socket = SlackSocket(SLACK_TOKEN, translate=False)
+    for event in socket.events():
+        if event.type != 'message':
+            continue
+        if event.event['channel'] != listen_group_id:
+            continue
+        if event.event['user'] == BOT_USER_ID:
+            continue
+
+        logger.debug(event.json)
+        text = event.event['text']
+        add_orders(orders, [event.event])
+        if 'start' in text and '<@{}>'.format(BOT_USER_ID) in text:
+            if started:
+                if t.is_alive():
+                    notify_slack(MESSAGES['already started'])
+                else:
+                    # starting again
+                    t = threading.Thread(target=countdown, args=(orders,))
+                    t.start()
+            else:
+                t.start()
+                started = True
