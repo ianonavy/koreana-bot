@@ -315,7 +315,8 @@ def get_item(text, user=None):
     text = clean_text(text)
 
     # Dealing with people who say 'A' something but didn't mention 'Special A'
-    if 'a' in text and 'special' not in text:
+    # Calling .split() will separate on whitespace
+    if 'a' in text.split() and 'special' not in text:
         return None
     if 'menu' in text:
         return None
