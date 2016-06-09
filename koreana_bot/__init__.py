@@ -1,5 +1,7 @@
-import logging
 import json
+import logging
+import math
+import re
 import time
 import threading
 
@@ -11,17 +13,19 @@ from fuzzywuzzy import process
 from slacksocket import SlackSocket
 
 
-POST_CHANNEL = '#ian-test-group'
-LISTEN_CHANNEL = 'ian-test-group'
+POST_CHANNEL = '#koreana-thursday'
+LISTEN_CHANNEL = 'koreana-thursday'
 GROUP_NAME = 'koreana-thursday'
 BOT_USER_ID = 'U0QNJ680G'
-WINDOW_SIZE_SECONDS = 86400 * 5
-ORDER_TIME_MINUTES = 60
+WINDOW_SIZE_SECONDS = 86400
+ORDER_TIME_HOUR = 11
+ORDER_TIME_MINUTE = 45
 CONFIDENCE_THRESHOLD = 70
-WARNING_MINUTES = [30, 15]
-FINAL_WARNING = 5
+WARNING_MINUTES = [15, 10, 5, 2]
+SLEEP_INTERVAL = 60  # seconds -- shouldn't need to change
 TAX_RATE = 0.07
 TIP_RATE = 0.10
+SLACK_ENABLED = True
 settings = adverplex.settings.Settings()
 SLACK_TOKEN = settings.value('koreana/slack', required=True)
 slack = slacker.Slacker(SLACK_TOKEN)
@@ -46,10 +50,10 @@ MESSAGES = {
         "@channel Order closing in {minutes} minutes!"
     ),
     'final changes': (
-        "@channel Last call for final changes. Here's the order so far:"
+        "Last call for final changes. Here's the order so far:"
     ),
     'disclaimer': (
-        "Disclaimer: I only really know about lunch specials. If I missed "
+        "*Disclaimer:* I only really know about lunch specials. If I missed "
         "your order, please notify the person who is actually placing the "
         "order!"
     ),
@@ -74,15 +78,21 @@ MESSAGES = {
         "We've already started!"
     ),
     'option unsure': (
-        "<@{user}>: I'm assuming you want {option}. Say your order again if "
-        "I'm wrong."
+        "<@{user}>: I heard \"{item}\", but I'm assuming you want {option}. "
+        "Say your order again if I'm wrong."
     ),
     'cancelled': (
-        "<@{user}>: I cancelled your order"
+        "<@{user}>: I cancelled your order."
     ),
     'changed': (
-        "<@{user}>: I changed your order to \"{item}\""
-    )
+        "<@{user}>: I changed your order to \"{item}\"."
+    ),
+    'your order is': (
+        "<@{user}>: Your order is: {order}"
+    ),
+    'order missing': (
+        "<@{user}>: I don't have an order for you."
+    ),
 }
 
 PRICES = {
@@ -129,6 +139,8 @@ for item in PRICES.keys():
 
 
 def notify_slack(message):
+    if not SLACK_ENABLED:
+        return
     message = message.replace("@channel", "<!channel|@channel>")
     slack.chat.post_message(POST_CHANNEL, message, as_user=True)
 
@@ -183,22 +195,27 @@ def clean_text(text):
 
 def get_item(text, user=None):
     text = clean_text(text)
-    # direct message at someone else should be ignored
-    if '<@' in text:
+
+    if 'a' in text.split() and 'special' not in text:
+        return None
+    if 'menu' in text:
         return None
 
     item, confidence = process.extractOne(text, MENU_ITEMS.keys())
     item = MENU_ITEMS[item]
+
     if confidence > CONFIDENCE_THRESHOLD:
         if item in OPTIONS:
             option, option_confidence = process.extractOne(text, OPTIONS[item])
             item += " - " + option
+
             if user and option_confidence < CONFIDENCE_THRESHOLD:
                 notify_slack(MESSAGES['option unsure'].format(user=user,
+                                                              item=item,
                                                               option=option))
-        if user:
-            logger.debug('[%s%%] "%s" => %s (%s)',
-                         confidence, text, item, get_user_name(user))
+            if user:
+                logger.debug('[%s%%] "%s" => %s (%s)', confidence, text,
+                             item, get_user_name(user))
         return item
     else:
         return None
@@ -207,7 +224,7 @@ def get_item(text, user=None):
 def fetch_messages():
     oldest_timestamp = int(time.time()) - WINDOW_SIZE_SECONDS
     group_id, group_type = _get_group_or_channel_id(GROUP_NAME)
-    res = getattr(slack, group_type).history(group_id, oldest=oldest_timestamp)
+    res = getattr(slack, group_type).history(group_id, oldest=oldest_timestamp, count=1000)
     return reversed(res.body['messages'])
 
 
@@ -218,6 +235,8 @@ def _order_changed(orders, name, item):
 def add_orders(orders, messages):
     for message in messages:
         user = message['user']
+        if user == BOT_USER_ID:
+            continue
         item = get_item(message['text'], user)
         if item:
             name = get_user_name(user)
@@ -225,9 +244,11 @@ def add_orders(orders, messages):
                 del orders[name]
                 notify_slack(MESSAGES['cancelled'].format(user=user))
                 continue
+            orders[name] = {'name': name, 'item': item}
             if _order_changed(orders, name, item):
                 notify_slack(MESSAGES['changed'].format(user=user, item=item))
-            orders[name] = {'name': name, 'item': item}
+            else:
+                notify_order(orders, user)
     return orders
 
 
@@ -277,23 +298,25 @@ def get_full_order_message(quantities):
 
 
 def countdown(orders):
-    deadline = arrow.now().replace(minutes=ORDER_TIME_MINUTES).format("h:mma")
-    notify_slack(MESSAGES['welcome'].format(deadline=deadline))
+    deadline = arrow.now().replace(hour=ORDER_TIME_HOUR,
+                                   minute=ORDER_TIME_MINUTE)
+    notify_slack(MESSAGES['welcome'].format(deadline=deadline.format("h:mma")))
 
-    for cur_min in range(ORDER_TIME_MINUTES):
-        minutes_left = ORDER_TIME_MINUTES - cur_min
-
+    # add 1 to round up
+    minutes_left = math.ceil((deadline - arrow.now()).total_seconds() / 60)
+    while minutes_left > 0:
         if minutes_left in WARNING_MINUTES:
             message_format = MESSAGES['n minutes warning']
-            notify_slack(message_format.format(minutes=minutes_left))
+            notify_slack(message_format.format(minutes=int(minutes_left)))
 
-        if minutes_left == FINAL_WARNING:
-            notify_slack(MESSAGES['n minutes warning'].format(minutes=5))
+        if minutes_left == WARNING_MINUTES[-1]:
             costs = get_costs(orders)
             notify_slack(MESSAGES['final changes'])
             post_costs(costs)
             notify_slack(MESSAGES['disclaimer'])
-        time.sleep(1)
+
+        time.sleep(SLEEP_INTERVAL)
+        minutes_left = math.ceil((deadline - arrow.now()).total_seconds() / 60)
 
     costs = get_costs(orders)
 
@@ -313,12 +336,34 @@ def countdown(orders):
         notify_slack(MESSAGES['place order'].format(message=message))
 
 
+def notify_order(orders, user):
+    name = get_user_name(user)
+    if name not in orders:
+        message_format = MESSAGES['order missing']
+        order = None
+    else:
+        message_format = MESSAGES['your order is']
+        order = orders[name]['item']
+    notify_slack(message_format.format(user=user, order=order))
+
+
+def handle_event(orders, event):
+    if re.search(r"what('| i)?s my order", event['text'].lower()):
+        notify_order(orders, event['user'])
+    else:
+        add_orders(orders, [event])
+
+
 def main():
+    global SLACK_ENABLED
     orders = {}
 
-    # fetch historical
-    # messages = fetch_messages()
-    # orders = add_orders(orders, messages)
+    logger.debug('Fetching historical messages')
+    messages = fetch_messages()
+    SLACK_ENABLED = False
+    orders = add_orders(orders, messages)
+    SLACK_ENABLED = True
+    logger.debug('Got {} orders'.format(len(orders)))
 
     listen_group_id, _ = _get_group_or_channel_id(LISTEN_CHANNEL)
     started = False
@@ -330,18 +375,19 @@ def main():
             continue
         if event.event['channel'] != listen_group_id:
             continue
-        if event.event['user'] == BOT_USER_ID:
+        if 'user' not in event.event or 'text' not in event.event:
             continue
 
         logger.debug(event.json)
         text = event.event['text']
-        add_orders(orders, [event.event])
+        handle_event(orders, event.event)
         if 'start' in text and '<@{}>'.format(BOT_USER_ID) in text:
             if started:
                 if t.is_alive():
                     notify_slack(MESSAGES['already started'])
                 else:
                     # starting again
+                    orders = {}
                     t = threading.Thread(target=countdown, args=(orders,))
                     t.start()
             else:

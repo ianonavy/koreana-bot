@@ -74,3 +74,13 @@ def test_cancel():
 def test_pray_emoji():
     message = u':pray:'
     assert get_item(message) is None
+
+
+def test_i_love_that_i_am_now_a_bot():
+    message = u'i love that i am now a bot'
+    assert get_item(message) is None
+
+
+def test_lunch_special_menu():
+    message = u'i only put stuff from the  special menu'
+    assert get_item(message) is None

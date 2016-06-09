@@ -1,0 +1,16 @@
+@gene.bot
+what's my order?
+manual mode
+
+
+Improved NLP - understand the intent
+- Cancel order
+- Place order
+- Change order
+- I'll have what he's having
+- Order for someone else
+-
+
+Surprise me (with budget and dietary restrictions)
+Ordering for other people
+Twilio ordering
