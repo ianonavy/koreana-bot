@@ -53,7 +53,7 @@ MESSAGES = {
         "Last call for final changes. Here's the order so far:"
     ),
     'disclaimer': (
-        "*Disclaimer:* I only really know about lunch specials. If I missed "
+        "*Disclaimer:* I only really know about lunch specials and sushi A La Carte orders. If I missed "
         "your order, please notify the person who is actually placing the "
         "order!"
     ),
@@ -117,9 +117,89 @@ PRICES = {
     # Gary's special order
     'Gom Tang': 14,
 
+    # Sushi A La Carte
+    'Tuna': 6,
+    'Yellowtail': 6,
+    'Salmon': 5,
+    'Eel': 7,
+    'Fluke': 5,
+    'Striped Bass': 5,
+    'Octopus': 5,
+    'Shrimp': 4.5,
+    'Mackerel': 4.5,
+    'Crabstick': 4.5,
+    'Squid': 4.5,
+    'Sea Urchin': 7,
+    'Salmon Roe': 6,
+    'Flying Fish Roe': 6,
+    'Egg': 4.5,
+    'Smoked Salmon': 4.5,
+    'Inari': 4.5,
+
+    'Kappa Maki': 4.5,
+    'Osinko Maki': 4.5,
+    'Avocado Maki': 5,
+    'Spinach Maki': 5,
+    'Asparagus Maki': 5.5,
+    'Kimchee Maki': 5.5, # Uh oh
+
+    'Salmon Maki': 6,
+    'Negihama Maki': 6,
+    'Tekka Maki': 6,
+    'Smoked Salmon Maki': 6,
+
+    'Boston Maki': 6.5,
+    'California Maki': 5.5,
+    'Salmon Skin Maki': 5,
+    'Eel Cucumber Maki': 8,
+    'New York Maki': 6,
+    'Spicy salmon Maki': 6,
+    'Spicy Tuna Maki': 6,
+    'Idaho Maki': 5.5,
+    'Philadelphia Maki': 6.5,
+    'Dragon Maki': 11.5,
+    'Rainbow Maki': 10,
+    'Koreana Maki': 10,
+    'Chef Special Maki': 10,
+    'Tempura Maki': 7,
+    'Soft Shell Maki': 10,
+    'Crazy Maki': 10.5,
+    'Alaska Maki': 10,
+    'Caterpillar Maki': 12,
+    'Crunch Roll': 11,
+    'Volcano Roll': 8,
+    'Midnight Sun Roll': 12,
+    'Ruby Roll': 11,
+    'Snow Mountain Roll': 11,
+    'Tiger Maki': 10,
+    'Futo Maki': 7,
+
     'Cancel': 0,
 }
+
+# A list of sushi that don't have "Roll" or "Maki" in the name
+SUSHIALACARTE = {
+    'Tuna',
+    'Yellowtail',
+    'Salmon',
+    'Eel',
+    'Fluke',
+    'Striped Bass',
+    'Octopus',
+    'Shrimp',
+    'Mackerel',
+    'Crabstick',
+    'Squid',
+    'Sea Urchin',
+    'Salmon Roe',
+    'Flying Fish Roe',
+    'Egg',
+    'Smoked Salmon',
+    'Inari',
+}
+
 OPTIONS = {
+    # Lunch Menu
     'Duenjang Chigae': ['beef', 'pork', 'seafood'],
     'Soft Tofu Chigae': ['beef', 'pork', 'seafood'],
     'Special A': ['kimchee', 'salad'],
@@ -129,13 +209,51 @@ OPTIONS = {
     'Salmon Teriyaki': ['kimchee', 'salad'],
     'Chicken Teriyaki': ['kimchee', 'salad'],
     'Vegetable Tempura': ['kimchee', 'salad'],
+
+    # Sushi A La Carte
+    'Tuna': [('Sushi', 0), ('Sashimi', 1)],
+    'Yellowtail': [('Sushi', 0), ('Sashimi', 1)],
+    'Salmon': [('Sushi', 0), ('Sashimi', 1)],
+    'Eel': [('Sushi', 0), ('Sashimi', 1)],
+    'Fluke': [('Sushi', 0), ('Sashimi', 1)],
+    'Striped Bass': [('Sushi', 0), ('Sashimi', 1)],
+    'Octopus': [('Sushi', 0), ('Sashimi', 1)],
+    'Shrimp': [('Sushi', 0), ('Sashimi', 1)],
+    'Mackerel': [('Sushi', 0), ('Sashimi', 1)],
+    'Crabstick': [('Sushi', 0), ('Sashimi', 1)],
+    'Squid': [('Sushi', 0), ('Sashimi', 1)],
+    'Sea Urchin': [('Sushi', 0), ('Sashimi', 1)],
+    'Salmon Roe': [('Sushi', 0), ('Sashimi', 1)],
+    'Flying Fish Roe': [('Sushi', 0), ('Sashimi', 1)],
+    'Egg': [('Sushi', 0), ('Sashimi', 1)],
+    'Smoked Salmon': [('Sushi', 0), ('Sashimi', 1)],
+    
+    'Kappa Maki': [('Roll', 0), ('Hand Roll', -1)],
+    'Osinko Maki': [('Roll', 0), ('Hand Roll', -1)],
+    'Avocado Maki': [('Roll', 0), ('Hand Roll', -1.5)],
+    'Spinach Maki': [('Roll', 0), ('Hand Roll', -1.5)],
+    'Asparagus Maki': [('Roll', 0), ('Hand Roll', -1)],
+    'Kimchee Maki': [('Roll', 0), ('Hand Roll', -1)],
+    
+    'Boston Maki': [('Roll', 0), ('Hand Roll', -1)],
+    'California Maki': [('Roll', 0), ('Hand Roll', -1)],
+    'Salmon Skin Maki': [('Roll', 0), ('Hand Roll', -1)],
+    'Eel Cucumber Maki': [('Roll', 0), ('Hand Roll', -1)],
+    'New York Maki': [('Roll', 0), ('Hand Roll', -1)],
+    'Spicy salmon Maki': [('Roll', 0), ('Hand Roll', -1)],
+    'Spicy Tuna Maki': [('Roll', 0), ('Hand Roll', -1)],
+    'Idaho Maki': [('Roll', 0), ('Hand Roll', -1)],
+    'Philadelphia Maki': [('Roll', 0), ('Hand Roll', -1)],
+    
 }
-MENU_ITEMS = {item.lower(): item for item in PRICES.keys()}
-for item in PRICES.keys():
-    if item in OPTIONS:
-        for option in OPTIONS[item]:
-            PRICES["{} - {}".format(item, option)] = PRICES[item]
-        del PRICES[item]
+MENU_ITEMS = {item.lower(): item for item in PRICES}
+for item in OPTIONS: # Assuming every item in options is in prices
+    for option in OPTIONS[item]:
+        if isinstance(option, tuple): # Price adjustment for an option
+            PRICES[item] += option[1]
+            option = option[0]
+        PRICES["{} - {}".format(item, option)] = PRICES[item]
+    del PRICES[item]
 
 
 def notify_slack(message):
@@ -196,6 +314,8 @@ def clean_text(text):
 def get_item(text, user=None):
     text = clean_text(text)
 
+    # Dealing with people who say 'A' something but didn't mention 'Special A'
+    # Calling .split() will separate on whitespace
     if 'a' in text.split() and 'special' not in text:
         return None
     if 'menu' in text:
@@ -274,7 +394,11 @@ def post_costs(costs):
 
 def get_full_order_message(quantities):
     message = "Hi, I'd like to place a large order for pickup. "
+    sushiALaCarte = ''
     for index, (item, quantity) in enumerate(quantities.iteritems()):
+        if 'Roll' in item or 'Maki' in item or item in SUSHIALACARTE:
+            sushiALaCarte += '%d order%s of %s' % (quantity, 's' if quantity-1 else '', item)
+            continue
         # Conditionally add comma separation
         if len(quantities) > 1:
             if index + 1 == len(quantities):
@@ -293,6 +417,7 @@ def get_full_order_message(quantities):
             pluralized_item = item + plural
 
         message += "{} {}".format(quantity, pluralized_item)
+    message += ". I'd also like to order some sushi A La Carte. I'd like " +sushiALaCarte
     message += ". That's it. Thank you!"
     return message
 
