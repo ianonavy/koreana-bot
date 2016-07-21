@@ -1,0 +1,13 @@
+v1.1
+- Add sushi a la carte options
+- Change config parsing to use JSON file
+- Add @ordered ping support
+- Add "clear" and "final order" commands
+
+v1.0
+- Uses slack socket to handle events in real time rather than relying
+  on slash commands
+- Fuzzy matches orders from users, handling most weird edge cases
+  appropriately
+- Prints a list of the total cost distribution for each user
+- Computes the final order message as a prompt for the caller
