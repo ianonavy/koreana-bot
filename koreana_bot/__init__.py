@@ -68,7 +68,7 @@ MESSAGES = {
     ),
     'place order': (
         "Please call Koreana at (617) 576-8661 with the following "
-        " message: \n> {message}"
+        "message: \n> {message}"
     ),
     'empty': (
         "Nothing. Really? No takers?"
