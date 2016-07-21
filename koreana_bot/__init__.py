@@ -202,15 +202,15 @@ SUSHIALACARTE = {
 
 OPTIONS = {
     # Lunch Menu
-    'Duenjang Chigae': ['beef', 'pork', 'seafood'],
-    'Soft Tofu Chigae': ['beef', 'pork', 'seafood'],
-    'Special A': ['kimchee', 'salad'],
-    'Special B': ['kimchee', 'salad'],
-    'Galbi': ['kimchee', 'salad'],
-    'Bulgogi': ['kimchee', 'salad'],
-    'Salmon Teriyaki': ['kimchee', 'salad'],
-    'Chicken Teriyaki': ['kimchee', 'salad'],
-    'Vegetable Tempura': ['kimchee', 'salad'],
+    'Duenjang Chigae': [('beef', 0), ('pork', 0), ('seafood', 0)],
+    'Soft Tofu Chigae': [('beef', 0), ('pork', 0), ('seafood', 0)],
+    'Special A': [('kimchee', 0), ('salad', 0)],
+    'Special B': [('kimchee', 0), ('salad', 0)],
+    'Galbi': [('kimchee', 0), ('salad', 0)],
+    'Bulgogi': [('kimchee', 0), ('salad', 0)],
+    'Salmon Teriyaki': [('kimchee', 0), ('salad', 0)],
+    'Chicken Teriyaki': [('kimchee', 0), ('salad', 0)],
+    'Vegetable Tempura': [('kimchee', 0), ('salad', 0)],
 
     # Sushi A La Carte
     'Tuna': [('Sushi', 0), ('Sashimi', 1)],
@@ -229,14 +229,14 @@ OPTIONS = {
     'Flying Fish Roe': [('Sushi', 0), ('Sashimi', 1)],
     'Egg': [('Sushi', 0), ('Sashimi', 1)],
     'Smoked Salmon': [('Sushi', 0), ('Sashimi', 1)],
-    
+
     'Kappa Maki': [('Roll', 0), ('Hand Roll', -1)],
     'Osinko Maki': [('Roll', 0), ('Hand Roll', -1)],
     'Avocado Maki': [('Roll', 0), ('Hand Roll', -1.5)],
     'Spinach Maki': [('Roll', 0), ('Hand Roll', -1.5)],
     'Asparagus Maki': [('Roll', 0), ('Hand Roll', -1)],
     'Kimchee Maki': [('Roll', 0), ('Hand Roll', -1)],
-    
+
     'Boston Maki': [('Roll', 0), ('Hand Roll', -1)],
     'California Maki': [('Roll', 0), ('Hand Roll', -1)],
     'Salmon Skin Maki': [('Roll', 0), ('Hand Roll', -1)],
@@ -246,7 +246,7 @@ OPTIONS = {
     'Spicy Tuna Maki': [('Roll', 0), ('Hand Roll', -1)],
     'Idaho Maki': [('Roll', 0), ('Hand Roll', -1)],
     'Philadelphia Maki': [('Roll', 0), ('Hand Roll', -1)],
-    
+
 }
 MENU_ITEMS = {item.lower(): item for item in PRICES}
 for item in OPTIONS: # Assuming every item in options is in prices
@@ -323,12 +323,16 @@ def get_item(text, user=None):
     if 'menu' in text:
         return None
 
-    item, confidence = process.extractOne(text, MENU_ITEMS.keys())
+    # Use simpler partial ratio with no full processing for better accuracy
+    item, confidence = process.extractOne(
+        text, MENU_ITEMS.keys(),
+        lambda x: x,
+        scorer=fuzz.partial_ratio)
     item = MENU_ITEMS[item]
 
     if confidence > CONFIDENCE_THRESHOLD:
         if item in OPTIONS:
-            option, option_confidence = process.extractOne(text, OPTIONS[item])
+            (option, price_change), option_confidence = process.extractOne(text, OPTIONS[item])
             item += " - " + option
 
             if user and option_confidence < CONFIDENCE_THRESHOLD:
@@ -395,18 +399,18 @@ def post_costs(costs):
 
 
 def get_full_order_message(quantities):
-    message = "Hi, I'd like to place a large order for pickup. "
-    sushiALaCarte = ''
+    message = ["Hi, I'd like to place a large order for pickup. "]
+    sushi_a_la_carte = ''
     for index, (item, quantity) in enumerate(quantities.iteritems()):
-        if 'Roll' in item or 'Maki' in item or item in SUSHIALACARTE:
-            sushiALaCarte += '%d order%s of %s' % (quantity, 's' if quantity-1 else '', item)
+        if 'Roll' in item or 'Maki' in item or item.split(' - ')[0] in SUSHIALACARTE:
+            sushi_a_la_carte += '%d order%s of %s' % (quantity, 's' if quantity - 1 else '', item)
             continue
         # Conditionally add comma separation
         if len(quantities) > 1:
             if index + 1 == len(quantities):
-                message += ", and "
+                message.append(", and ")
             elif index > 0:
-                message += ", "
+                message.append(", ")
 
         # Pluralize the menu item, not the options
         plural = "s" if quantity != 1 else ""
@@ -418,10 +422,13 @@ def get_full_order_message(quantities):
         else:
             pluralized_item = item + plural
 
-        message += "{} {}".format(quantity, pluralized_item)
-    message += ". I'd also like to order some sushi A La Carte. I'd like " +sushiALaCarte
+        message.append("{} {}".format(quantity, pluralized_item))
+    if sushi_a_la_carte:
+        if len(message) > 1:
+            message.append(". ")
+        message.append("I'd also like to order some sushi a la carte. I'd like " + sushi_a_la_carte)
     message += ". That's it. Thank you!"
-    return message
+    return ''.join(message)
 
 
 def countdown(orders):
