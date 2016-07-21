@@ -71,6 +71,11 @@ def test_kappa_maki_roll():
     assert 'Kappa Maki - roll' == get_item(message)
 
 
+def test_salmon_teriyaki():
+    message = u'salmon teriyaki'
+    assert 'Salmon Teriyaki - salad' == get_item(message)
+
+
 def test_cancel():
     messages = [
         'cancel my order',

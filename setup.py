@@ -2,7 +2,7 @@
 
 from setuptools import setup
 setup(name='koreana-bot',
-      version='1.1',
+      version='1.1.2',
       author='Ian Naval',
       author_email='ian@everquote.com',
       description='Koreana bot',

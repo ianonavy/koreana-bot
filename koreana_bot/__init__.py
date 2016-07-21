@@ -110,11 +110,20 @@ def get_item(text, user=None):
         return None
 
     # Use simpler partial ratio with no full processing for better accuracy
-    item, confidence = process.extractOne(
-        text, MENU_ITEMS.keys(),
-        lambda x: x,
-        scorer=fuzz.partial_ratio)
-    item = MENU_ITEMS[item]
+    item_names = sorted(MENU_ITEMS.items(),
+                        key=lambda item: len(item[0]),
+                        reverse=True)
+    for key, value in item_names:
+        if key in text:
+            item = value
+            confidence = 100
+            break
+    else:
+        item, confidence = process.extractOne(
+            text, MENU_ITEMS.keys(),
+            lambda x: x,
+            scorer=fuzz.partial_ratio)
+        item = MENU_ITEMS[item]
 
     if confidence > CONFIG['min-confidence']:
         if item in CONFIG['options']:
@@ -166,11 +175,11 @@ def add_orders(orders, messages):
             continue
         item = get_item(message['text'], user)
         if item:
-            name = get_user_name(user)
-            if item == 'Cancel' and name in names:
-                del orders[name]
+            if item == 'Cancel' and user in orders:
+                del orders[user]
                 notify_slack(MESSAGES['cancelled'].format(user=user))
                 continue
+            name = get_user_name(user)
             orders[user] = {'name': name, 'item': item}
             if _order_changed(orders, user, item):
                 notify_slack(MESSAGES['changed'].format(user=user, item=item))
