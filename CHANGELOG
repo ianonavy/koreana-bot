@@ -1,3 +1,6 @@
+v1.1.1
+- Fix options matching for a la carte sushi
+
 v1.1
 - Add sushi a la carte options
 - Change config parsing to use JSON file

@@ -118,11 +118,20 @@ def get_item(text, user=None):
 
     if confidence > CONFIG['min-confidence']:
         if item in CONFIG['options']:
-            (option, _), option_confidence = process.extractOne(
-                text,
-                CONFIG['options'][item],
-                lambda x: x[0],
-                scorer=fuzz.partial_ratio)
+            # Try exact match for options (to support hand roll vs roll)
+            option_names = [name for name, _ in CONFIG['options'][item]]
+            option_names = sorted(option_names, key=len, reverse=True)
+            for option_name in option_names:
+                if option_name in text:
+                    option = option_name
+                    option_confidence = 100
+                    break
+            else:
+                option, option_confidence = process.extractOne(
+                    text,
+                    option_names,
+                    lambda x: x,
+                    scorer=fuzz.partial_ratio)
             item += " - " + option
 
             if user and option_confidence < CONFIG['min-confidence']:
