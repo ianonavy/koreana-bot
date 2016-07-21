@@ -95,6 +95,9 @@ MESSAGES = {
     'order missing': (
         "<@{user}>: I don't have an order for you."
     ),
+    'cleared': (
+        "Cleared all orders."
+    ),
 }
 
 PRICES = {
@@ -354,8 +357,8 @@ def fetch_messages():
     return reversed(res.body['messages'])
 
 
-def _order_changed(orders, name, item):
-    return name in orders and orders[name]['item'] != item
+def _order_changed(orders, user, item):
+    return user in orders and orders[user]['item'] != item
 
 
 def add_orders(orders, messages):
@@ -366,12 +369,12 @@ def add_orders(orders, messages):
         item = get_item(message['text'], user)
         if item:
             name = get_user_name(user)
-            if item == 'Cancel' and name in orders:
+            if item == 'Cancel' and name in names:
                 del orders[name]
                 notify_slack(MESSAGES['cancelled'].format(user=user))
                 continue
-            orders[name] = {'name': name, 'item': item}
-            if _order_changed(orders, name, item):
+            orders[user] = {'name': name, 'item': item}
+            if _order_changed(orders, user, item):
                 notify_slack(MESSAGES['changed'].format(user=user, item=item))
             else:
                 notify_order(orders, user)
@@ -455,41 +458,54 @@ def countdown(orders):
     costs = get_costs(orders)
 
     notify_slack(MESSAGES['closed'])
+    notify_final_order(costs=costs)
+
+
+def notify_final_order(costs=None, orders=None):
+    if costs is None:
+        costs = get_costs(orders)
     if costs.empty:
         notify_slack(MESSAGES['no order'])
     else:
-        notify_orders(costs=costs)
+        post_costs(costs)
+        subtotal = (costs['price'] + costs['tax']).sum()
+        tip = costs['tip'].sum()
+        grand_total = costs['total'].sum()
+        notify_slack(MESSAGES['total'].format(subtotal=subtotal, tip=tip,
+                                              grand_total=grand_total))
+
+        quantities = costs.groupby('item').size()
+        message = get_full_order_message(quantities)
+        notify_slack(MESSAGES['place order'].format(message=message))
 
 
-def notify_orders(costs=None, orders=None):
-    if not costs:
-        costs = get_costs(orders)
-    post_costs(costs)
-    subtotal = (costs['price'] + costs['tax']).sum()
-    tip = costs['tip'].sum()
-    grand_total = costs['total'].sum()
-    notify_slack(MESSAGES['total'].format(subtotal=subtotal, tip=tip,
-                                          grand_total=grand_total))
-
-    quantities = costs.groupby('item').size()
-    message = get_full_order_message(quantities)
-    notify_slack(MESSAGES['place order'].format(message=message))
+def notify_ordered(orders):
+    message = ' '.join("<@{user}>".format(user=user) for user in orders)
+    notify_slack(message)
 
 
 def notify_order(orders, user):
-    name = get_user_name(user)
-    if name not in orders:
+    if user not in orders:
         message_format = MESSAGES['order missing']
         order = None
     else:
         message_format = MESSAGES['your order is']
-        order = orders[name]['item']
+        order = orders[user]['item']
     notify_slack(message_format.format(user=user, order=order))
 
 
 def handle_event(orders, event):
-    if re.search(r"what('| i)?s my order", event['text'].lower()):
+    text = event['text']
+    addressing_bot = '<@{}>:'.format(BOT_USER_ID) in text
+    if re.search(r"what('| i)?s my order", text.lower()):
         notify_order(orders, event['user'])
+    elif '@ordered' in text:
+        notify_ordered(orders)
+    elif addressing_bot and 'final order' in text:
+        notify_final_order(orders=orders)
+    elif addressing_bot and 'clear' in text:
+        orders.clear()
+        notify_slack(MESSAGES['cleared'])
     else:
         add_orders(orders, [event])
 
@@ -497,7 +513,6 @@ def handle_event(orders, event):
 def main():
     global SLACK_ENABLED
     orders = {}
-
     logger.debug('Fetching historical messages')
     messages = fetch_messages()
     SLACK_ENABLED = False
@@ -533,5 +548,3 @@ def main():
             else:
                 t.start()
                 started = True
-        if 'repeat final order' in text and '<@{}>'.format(BOT_USER_ID) in text:
-            notify_orders(orders=orders)
