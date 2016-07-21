@@ -11,4 +11,10 @@ setup(name='koreana-bot',
       packages=['koreana_bot'],
       license='Proprietary',
       install_requires=[
+          'slacker',
+          'slacksocket',
+          'arrow',
+          'pandas',
+          'fuzzywuzzy',
+          'python-levenshtein',
       ])

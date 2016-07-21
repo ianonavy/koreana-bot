@@ -1,0 +1,11 @@
+version: '2'
+services:
+  bot:
+    build: .
+    volumes:
+     - .:/code
+  test:
+    build: .
+    volumes:
+     - .:/code
+    command: py.test
