@@ -326,7 +326,11 @@ def get_item(text, user=None):
 
     if confidence > CONFIG['min-confidence']:
         if item in OPTIONS:
-            (option, price_change), option_confidence = process.extractOne(text, OPTIONS[item])
+            (option, _), option_confidence = process.extractOne(
+                text,
+                OPTIONS[item],
+                lambda x: x[0],
+                scorer=fuzz.partial_ratio)
             item += " - " + option
 
             if user and option_confidence < CONFIG['min-confidence']:
