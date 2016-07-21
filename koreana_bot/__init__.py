@@ -45,9 +45,9 @@ MESSAGES = {
         "Last call for final changes. Here's the order so far:"
     ),
     'disclaimer': (
-        "*Disclaimer:* I only really know about lunch specials and sushi A La Carte orders. If I missed "
-        "your order, please notify the person who is actually placing the "
-        "order!"
+        "*Disclaimer:* I only really know about lunch specials and sushi "
+        "a la carte orders. If I missed your order, please notify the "
+        "person who is actually placing the order!"
     ),
     'closed': (
         "@channel Here is the final order:"
@@ -136,7 +136,7 @@ PRICES = {
     'Avocado Maki': 5,
     'Spinach Maki': 5,
     'Asparagus Maki': 5.5,
-    'Kimchee Maki': 5.5, # Uh oh
+    'Kimchee Maki': 5.5,
 
     'Salmon Maki': 6,
     'Negihama Maki': 6,
@@ -242,9 +242,9 @@ OPTIONS = {
 
 }
 MENU_ITEMS = {item.lower(): item for item in PRICES}
-for item in OPTIONS: # Assuming every item in options is in prices
+for item in OPTIONS:  # Assuming every item in options is in prices
     for option in OPTIONS[item]:
-        if isinstance(option, tuple): # Price adjustment for an option
+        if isinstance(option, tuple):  # Price adjustment for an option
             PRICES[item] += option[1]
             option = option[0]
         PRICES["{} - {}".format(item, option)] = PRICES[item]
@@ -348,7 +348,9 @@ def get_item(text, user=None):
 def fetch_messages():
     oldest_timestamp = int(time.time()) - CONFIG['initial-window-seconds']
     group_id, group_type = _get_group_or_channel_id(CONFIG['listen-channel'])
-    res = getattr(slack, group_type).history(group_id, oldest=oldest_timestamp, count=1000)
+    res = getattr(slack, group_type).history(group_id,
+                                             oldest=oldest_timestamp,
+                                             count=1000)
     return reversed(res.body['messages'])
 
 
@@ -396,12 +398,29 @@ def post_costs(costs):
     notify_slack(message)
 
 
+def pluralize(singular_string, quantity):
+    plural_suffix = "es" if singular_string.endswith("s") else "s"
+    return "{}{}".format(singular_string,
+                         plural_suffix if quantity != 1 else "")
+
+
+def is_a_la_carte(item):
+    return (
+        'Roll' in item or
+        'Maki' in item or
+        item.split(' - ')[0] in SUSHIALACARTE
+    )
+
+
 def get_full_order_message(quantities):
     message = ["Hi, I'd like to place a large order for pickup. "]
-    sushi_a_la_carte = ''
+    sushi_a_la_carte = []
     for index, (item, quantity) in enumerate(quantities.iteritems()):
-        if 'Roll' in item or 'Maki' in item or item.split(' - ')[0] in SUSHIALACARTE:
-            sushi_a_la_carte += '%d order%s of %s' % (quantity, 's' if quantity - 1 else '', item)
+        if is_a_la_carte(item):
+            sushi_a_la_carte.append(
+                "{} {} of {}".format(quantity,
+                                     pluralize("order", quantity),
+                                     item))
             continue
         # Conditionally add comma separation
         if len(quantities) > 1:
@@ -411,20 +430,22 @@ def get_full_order_message(quantities):
                 message.append(", ")
 
         # Pluralize the menu item, not the options
-        plural = "s" if quantity != 1 else ""
         parts = item.split(' - ')
         if len(parts) > 1:
             name = parts[0]
             options = ", ".join(parts[1:])
-            pluralized_item = "{}{} with {}".format(name, plural, options)
+            pluralized_item = "{} with {}".format(pluralize(name, quantity),
+                                                  options)
         else:
-            pluralized_item = item + plural
+            pluralized_item = pluralize(item, quantity)
 
         message.append("{} {}".format(quantity, pluralized_item))
     if sushi_a_la_carte:
         if len(message) > 1:
             message.append(". ")
-        message.append("I'd also like to order some sushi a la carte. I'd like " + sushi_a_la_carte)
+        message.append("I'd also like to order some sushi a la carte. "
+                       "I'd like ")
+        message += sushi_a_la_carte
     message += ". That's it. Thank you!"
     return ''.join(message)
 
