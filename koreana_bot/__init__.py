@@ -458,16 +458,22 @@ def countdown(orders):
     if costs.empty:
         notify_slack(MESSAGES['no order'])
     else:
-        post_costs(costs)
-        subtotal = (costs['price'] + costs['tax']).sum()
-        tip = costs['tip'].sum()
-        grand_total = costs['total'].sum()
-        notify_slack(MESSAGES['total'].format(subtotal=subtotal, tip=tip,
-                                              grand_total=grand_total))
+        notify_orders(costs=costs)
 
-        quantities = costs.groupby('item').size()
-        message = get_full_order_message(quantities)
-        notify_slack(MESSAGES['place order'].format(message=message))
+
+def notify_orders(costs=None, orders=None):
+    if not costs:
+        costs = get_costs(orders)
+    post_costs(costs)
+    subtotal = (costs['price'] + costs['tax']).sum()
+    tip = costs['tip'].sum()
+    grand_total = costs['total'].sum()
+    notify_slack(MESSAGES['total'].format(subtotal=subtotal, tip=tip,
+                                          grand_total=grand_total))
+
+    quantities = costs.groupby('item').size()
+    message = get_full_order_message(quantities)
+    notify_slack(MESSAGES['place order'].format(message=message))
 
 
 def notify_order(orders, user):
@@ -527,3 +533,5 @@ def main():
             else:
                 t.start()
                 started = True
+        if 'repeat final order' in text and '<@{}>'.format(BOT_USER_ID) in text:
+            notify_orders(orders=orders)
