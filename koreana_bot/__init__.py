@@ -13,24 +13,13 @@ from fuzzywuzzy import process
 from slacksocket import SlackSocket
 
 
-POST_CHANNEL = '#koreana-thursday'
-LISTEN_CHANNEL = 'koreana-thursday'
-GROUP_NAME = 'koreana-thursday'
-BOT_USER_ID = 'U0QNJ680G'
-WINDOW_SIZE_SECONDS = 86400
-ORDER_TIME_HOUR = 11
-ORDER_TIME_MINUTE = 45
-CONFIDENCE_THRESHOLD = 70
-WARNING_MINUTES = [15, 10, 5, 2]
-SLEEP_INTERVAL = 60  # seconds -- shouldn't need to change
-TAX_RATE = 0.07
-TIP_RATE = 0.10
+with open('config.json') as config_file:
+    CONFIG = json.load(config_file)
+
+
 SLACK_ENABLED = True
 
-
-with open('config.json') as config_file:
-    SLACK_TOKEN = json.load(config_file)['slack-token']
-slack = slacker.Slacker(SLACK_TOKEN)
+slack = slacker.Slacker(CONFIG['slack-token'])
 
 logger = logging.getLogger('koreana-bot')
 handler = logging.StreamHandler()
@@ -38,6 +27,7 @@ formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
 handler.setFormatter(formatter)
 logger.addHandler(handler)
 logger.setLevel(logging.DEBUG)
+
 
 MESSAGES = {
     'welcome': (
@@ -264,8 +254,9 @@ for item in OPTIONS: # Assuming every item in options is in prices
 def notify_slack(message):
     if not SLACK_ENABLED:
         return
+    channel = "#{}".format(CONFIG['post-channel'])
     message = message.replace("@channel", "<!channel|@channel>")
-    slack.chat.post_message(POST_CHANNEL, message, as_user=True)
+    slack.chat.post_message(channel, message, as_user=True)
 
 
 def _filter_channels_by_name(name, channels):
@@ -333,12 +324,12 @@ def get_item(text, user=None):
         scorer=fuzz.partial_ratio)
     item = MENU_ITEMS[item]
 
-    if confidence > CONFIDENCE_THRESHOLD:
+    if confidence > CONFIG['min-confidence']:
         if item in OPTIONS:
             (option, price_change), option_confidence = process.extractOne(text, OPTIONS[item])
             item += " - " + option
 
-            if user and option_confidence < CONFIDENCE_THRESHOLD:
+            if user and option_confidence < CONFIG['min-confidence']:
                 notify_slack(MESSAGES['option unsure'].format(user=user,
                                                               item=item,
                                                               option=option))
@@ -351,8 +342,8 @@ def get_item(text, user=None):
 
 
 def fetch_messages():
-    oldest_timestamp = int(time.time()) - WINDOW_SIZE_SECONDS
-    group_id, group_type = _get_group_or_channel_id(GROUP_NAME)
+    oldest_timestamp = int(time.time()) - CONFIG['initial-window-seconds']
+    group_id, group_type = _get_group_or_channel_id(CONFIG['listen-channel'])
     res = getattr(slack, group_type).history(group_id, oldest=oldest_timestamp, count=1000)
     return reversed(res.body['messages'])
 
@@ -364,7 +355,7 @@ def _order_changed(orders, user, item):
 def add_orders(orders, messages):
     for message in messages:
         user = message['user']
-        if user == BOT_USER_ID:
+        if user == CONFIG['bot-user-id']:
             continue
         item = get_item(message['text'], user)
         if item:
@@ -386,8 +377,8 @@ def get_costs(orders):
     columns = ['name', 'item']
     costs = pandas.DataFrame(order_list, columns=columns)
     costs['price'] = costs['item'].map(PRICES)
-    costs['tax'] = costs['price'] * TAX_RATE
-    costs['tip'] = costs['price'] * TIP_RATE
+    costs['tax'] = costs['price'] * CONFIG['tax-rate']
+    costs['tip'] = costs['price'] * CONFIG['tip-rate']
     costs['total'] = costs['price'] + costs['tax'] + costs['tip']
     return costs
 
@@ -435,24 +426,25 @@ def get_full_order_message(quantities):
 
 
 def countdown(orders):
-    deadline = arrow.now().replace(hour=ORDER_TIME_HOUR,
-                                   minute=ORDER_TIME_MINUTE)
+    hour, minute = CONFIG['order-time'].split(':')
+    deadline = arrow.now().replace(hour=int(hour),
+                                   minute=int(minute))
     notify_slack(MESSAGES['welcome'].format(deadline=deadline.format("h:mma")))
 
     # add 1 to round up
     minutes_left = math.ceil((deadline - arrow.now()).total_seconds() / 60)
     while minutes_left > 0:
-        if minutes_left in WARNING_MINUTES:
+        if minutes_left in CONFIG['warning-minutes']:
             message_format = MESSAGES['n minutes warning']
             notify_slack(message_format.format(minutes=int(minutes_left)))
 
-        if minutes_left == WARNING_MINUTES[-1]:
+        if minutes_left == CONFIG['warning-minutes'][-1]:
             costs = get_costs(orders)
             notify_slack(MESSAGES['final changes'])
             post_costs(costs)
             notify_slack(MESSAGES['disclaimer'])
 
-        time.sleep(SLEEP_INTERVAL)
+        time.sleep(60)
         minutes_left = math.ceil((deadline - arrow.now()).total_seconds() / 60)
 
     costs = get_costs(orders)
@@ -496,7 +488,7 @@ def notify_order(orders, user):
 
 def handle_event(orders, event):
     text = event['text']
-    addressing_bot = '<@{}>:'.format(BOT_USER_ID) in text
+    addressing_bot = '<@{}>:'.format(CONFIG['bot-user-id']) in text
     if re.search(r"what('| i)?s my order", text.lower()):
         notify_order(orders, event['user'])
     elif '@ordered' in text:
@@ -520,11 +512,11 @@ def main():
     SLACK_ENABLED = True
     logger.debug('Got {} orders'.format(len(orders)))
 
-    listen_group_id, _ = _get_group_or_channel_id(LISTEN_CHANNEL)
+    listen_group_id, _ = _get_group_or_channel_id(CONFIG['listen-channel'])
     started = False
     t = threading.Thread(target=countdown, args=(orders,))
 
-    socket = SlackSocket(SLACK_TOKEN, translate=False)
+    socket = SlackSocket(CONFIG['slack-token'], translate=False)
     for event in socket.events():
         if event.type != 'message':
             continue
@@ -536,7 +528,7 @@ def main():
         logger.debug(event.json)
         text = event.event['text']
         handle_event(orders, event.event)
-        if 'start' in text and '<@{}>'.format(BOT_USER_ID) in text:
+        if 'start' in text and '<@{}>'.format(CONFIG['bot-user-id']) in text:
             if started:
                 if t.is_alive():
                     notify_slack(MESSAGES['already started'])

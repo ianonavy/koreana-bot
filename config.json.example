@@ -1,3 +1,12 @@
 {
-	"slack-token": ""
+	"slack-token": "",
+	"bot-user-id": "",
+	"listen-channel": "koreana-thursday",
+	"post-channel": "koreana-thursday",
+	"min-confidence": 70,
+	"tax-rate": 0.07,
+	"tip-rate": 0.10,
+	"order-time": "11:45",
+	"warning-minutes": [15, 10, 5, 2],
+	"initial-window-seconds": 86400
 }
