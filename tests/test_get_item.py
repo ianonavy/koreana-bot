@@ -63,12 +63,12 @@ def test_misspelled_yook_gae_jung():
 
 def test_kappa_maki_hand_roll():
     message = u'kappa maki hand roll'
-    assert 'Kappa Maki - Hand Roll' == get_item(message)
+    assert 'Kappa Maki - hand roll' == get_item(message)
 
 
 def test_kappa_maki_roll():
     message = u'kappa maki roll'
-    assert 'Kappa Maki - Roll' == get_item(message)
+    assert 'Kappa Maki - roll' == get_item(message)
 
 
 def test_cancel():
