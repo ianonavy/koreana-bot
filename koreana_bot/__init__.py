@@ -206,39 +206,39 @@ OPTIONS = {
     'Vegetable Tempura': [('kimchee', 0), ('salad', 0)],
 
     # Sushi A La Carte
-    'Tuna': [('Sushi', 0), ('Sashimi', 1)],
-    'Yellowtail': [('Sushi', 0), ('Sashimi', 1)],
-    'Salmon': [('Sushi', 0), ('Sashimi', 1)],
-    'Eel': [('Sushi', 0), ('Sashimi', 1)],
-    'Fluke': [('Sushi', 0), ('Sashimi', 1)],
-    'Striped Bass': [('Sushi', 0), ('Sashimi', 1)],
-    'Octopus': [('Sushi', 0), ('Sashimi', 1)],
-    'Shrimp': [('Sushi', 0), ('Sashimi', 1)],
-    'Mackerel': [('Sushi', 0), ('Sashimi', 1)],
-    'Crabstick': [('Sushi', 0), ('Sashimi', 1)],
-    'Squid': [('Sushi', 0), ('Sashimi', 1)],
-    'Sea Urchin': [('Sushi', 0), ('Sashimi', 1)],
-    'Salmon Roe': [('Sushi', 0), ('Sashimi', 1)],
-    'Flying Fish Roe': [('Sushi', 0), ('Sashimi', 1)],
-    'Egg': [('Sushi', 0), ('Sashimi', 1)],
-    'Smoked Salmon': [('Sushi', 0), ('Sashimi', 1)],
+    'Tuna': [('sushi', 0), ('sashimi', 1)],
+    'Yellowtail': [('sushi', 0), ('sashimi', 1)],
+    'Salmon': [('sushi', 0), ('sashimi', 1)],
+    'Eel': [('sushi', 0), ('sashimi', 1)],
+    'Fluke': [('sushi', 0), ('sashimi', 1)],
+    'Striped Bass': [('sushi', 0), ('sashimi', 1)],
+    'Octopus': [('sushi', 0), ('sashimi', 1)],
+    'Shrimp': [('sushi', 0), ('sashimi', 1)],
+    'Mackerel': [('sushi', 0), ('sashimi', 1)],
+    'Crabstick': [('sushi', 0), ('sashimi', 1)],
+    'Squid': [('sushi', 0), ('sashimi', 1)],
+    'Sea Urchin': [('sushi', 0), ('sashimi', 1)],
+    'Salmon Roe': [('sushi', 0), ('sashimi', 1)],
+    'Flying Fish Roe': [('sushi', 0), ('sashimi', 1)],
+    'Egg': [('sushi', 0), ('sashimi', 1)],
+    'Smoked Salmon': [('sushi', 0), ('sashimi', 1)],
 
-    'Kappa Maki': [('Roll', 0), ('Hand Roll', -1)],
-    'Osinko Maki': [('Roll', 0), ('Hand Roll', -1)],
-    'Avocado Maki': [('Roll', 0), ('Hand Roll', -1.5)],
-    'Spinach Maki': [('Roll', 0), ('Hand Roll', -1.5)],
-    'Asparagus Maki': [('Roll', 0), ('Hand Roll', -1)],
-    'Kimchee Maki': [('Roll', 0), ('Hand Roll', -1)],
+    'Kappa Maki': [('roll', 0), ('hand roll', -1)],
+    'Osinko Maki': [('roll', 0), ('hand roll', -1)],
+    'Avocado Maki': [('roll', 0), ('hand roll', -1.5)],
+    'Spinach Maki': [('roll', 0), ('hand roll', -1.5)],
+    'Asparagus Maki': [('roll', 0), ('hand roll', -1)],
+    'Kimchee Maki': [('roll', 0), ('hand roll', -1)],
 
-    'Boston Maki': [('Roll', 0), ('Hand Roll', -1)],
-    'California Maki': [('Roll', 0), ('Hand Roll', -1)],
-    'Salmon Skin Maki': [('Roll', 0), ('Hand Roll', -1)],
-    'Eel Cucumber Maki': [('Roll', 0), ('Hand Roll', -1)],
-    'New York Maki': [('Roll', 0), ('Hand Roll', -1)],
-    'Spicy salmon Maki': [('Roll', 0), ('Hand Roll', -1)],
-    'Spicy Tuna Maki': [('Roll', 0), ('Hand Roll', -1)],
-    'Idaho Maki': [('Roll', 0), ('Hand Roll', -1)],
-    'Philadelphia Maki': [('Roll', 0), ('Hand Roll', -1)],
+    'Boston Maki': [('roll', 0), ('hand roll', -1)],
+    'California Maki': [('roll', 0), ('hand roll', -1)],
+    'Salmon Skin Maki': [('roll', 0), ('hand roll', -1)],
+    'Eel Cucumber Maki': [('roll', 0), ('hand roll', -1)],
+    'New York Maki': [('roll', 0), ('hand roll', -1)],
+    'Spicy salmon Maki': [('roll', 0), ('hand roll', -1)],
+    'Spicy Tuna Maki': [('roll', 0), ('hand roll', -1)],
+    'Idaho Maki': [('roll', 0), ('hand roll', -1)],
+    'Philadelphia Maki': [('roll', 0), ('hand roll', -1)],
 
 }
 MENU_ITEMS = {item.lower(): item for item in PRICES}
@@ -412,8 +412,21 @@ def is_a_la_carte(item):
     )
 
 
+def and_comma_join(items):
+    if len(items) == 0:
+        return ""
+    elif len(items) == 2:
+        return " and ".join(items)
+    elif len(items) == 1:
+        return items[0]
+    else:
+        items[-1] = "and " + items[-1]
+        return ", ".join(items)
+
+
 def get_full_order_message(quantities):
     message = ["Hi, I'd like to place a large order for pickup. "]
+    non_sushi_items = []
     sushi_a_la_carte = []
     for index, (item, quantity) in enumerate(quantities.iteritems()):
         if is_a_la_carte(item):
@@ -421,31 +434,25 @@ def get_full_order_message(quantities):
                 "{} {} of {}".format(quantity,
                                      pluralize("order", quantity),
                                      item))
-            continue
-        # Conditionally add comma separation
-        if len(quantities) > 1:
-            if index + 1 == len(quantities):
-                message.append(", and ")
-            elif index > 0:
-                message.append(", ")
-
-        # Pluralize the menu item, not the options
-        parts = item.split(' - ')
-        if len(parts) > 1:
-            name = parts[0]
-            options = ", ".join(parts[1:])
-            pluralized_item = "{} with {}".format(pluralize(name, quantity),
-                                                  options)
         else:
-            pluralized_item = pluralize(item, quantity)
+            # Pluralize the menu item, not the options
+            parts = item.split(' - ')
+            if len(parts) > 1:
+                name = parts[0]
+                options = ", ".join(parts[1:])
+                pluralized_item = "{} with {}".format(
+                    pluralize(name, quantity), options)
+            else:
+                pluralized_item = pluralize(item, quantity)
 
-        message.append("{} {}".format(quantity, pluralized_item))
+            non_sushi_items.append("{} {}".format(quantity, pluralized_item))
+    message.append(and_comma_join(non_sushi_items))
     if sushi_a_la_carte:
-        if len(message) > 1:
+        if len(non_sushi_items) > 0:
             message.append(". ")
         message.append("I'd also like to order some sushi a la carte. "
                        "I'd like ")
-        message += sushi_a_la_carte
+        message.append(and_comma_join(sushi_a_la_carte))
     message += ". That's it. Thank you!"
     return ''.join(message)
 
