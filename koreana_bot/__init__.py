@@ -8,7 +8,7 @@ import threading
 import arrow
 import pandas
 import slacker
-import adverplex.settings
+from fuzzywuzzy import fuzz
 from fuzzywuzzy import process
 from slacksocket import SlackSocket
 
@@ -26,8 +26,10 @@ SLEEP_INTERVAL = 60  # seconds -- shouldn't need to change
 TAX_RATE = 0.07
 TIP_RATE = 0.10
 SLACK_ENABLED = True
-settings = adverplex.settings.Settings()
-SLACK_TOKEN = settings.value('koreana/slack', required=True)
+
+
+with open('config.json') as config_file:
+    SLACK_TOKEN = json.load(config_file)['slack-token']
 slack = slacker.Slacker(SLACK_TOKEN)
 
 logger = logging.getLogger('koreana-bot')
