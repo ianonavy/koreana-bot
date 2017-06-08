@@ -269,12 +269,12 @@ def get_full_order_message(quantities):
 
 def countdown(orders):
     hour, minute = CONFIG['order-time'].split(':')
-    deadline = arrow.now().replace(hour=int(hour),
-                                   minute=int(minute))
+    deadline = arrow.now().to('America/New_York').replace(hour=int(hour),
+                                                          minute=int(minute))
     notify_slack(MESSAGES['welcome'].format(deadline=deadline.format("h:mma")))
 
     # add 1 to round up
-    minutes_left = math.ceil((deadline - arrow.now()).total_seconds() / 60)
+    minutes_left = math.ceil((deadline - arrow.now().to('America/New_York')).total_seconds() / 60)
     while minutes_left > 0:
         if minutes_left in CONFIG['warning-minutes']:
             message_format = MESSAGES['n minutes warning']
