@@ -293,6 +293,7 @@ def countdown(orders):
 
     notify_slack(MESSAGES['closed'])
     notify_final_order(costs=costs)
+    clear_orders(orders)
 
 
 def notify_final_order(costs=None, orders=None):
@@ -328,6 +329,11 @@ def notify_order(orders, user):
     notify_slack(message_format.format(user=user, order=order))
 
 
+def clear_orders(orders):
+    orders.clear()
+    notify_slack(MESSAGES['cleared'])
+
+
 def handle_event(orders, event):
     text = event['text']
     addressing_bot = '<@{}>:'.format(CONFIG['bot-user-id']) in text
@@ -338,8 +344,7 @@ def handle_event(orders, event):
     elif addressing_bot and 'final order' in text:
         notify_final_order(orders=orders)
     elif addressing_bot and 'clear' in text:
-        orders.clear()
-        notify_slack(MESSAGES['cleared'])
+        clear_orders(orders)
     else:
         add_orders(orders, [event])
 
