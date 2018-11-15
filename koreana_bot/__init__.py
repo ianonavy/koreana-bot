@@ -347,7 +347,7 @@ def handle_event(orders, event):
         notify_final_order(orders=orders)
     elif addressing_bot and 'clear' in text:
         clear_orders(orders)
-    else:
+    elif addressing_bot:
         add_orders(orders, [event])
 
 
