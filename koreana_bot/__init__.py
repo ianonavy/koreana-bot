@@ -76,7 +76,7 @@ def _get_group_or_channel_id(name):
 
 def get_user_name(user_id):
     user = slack.users.info(user_id).body['user']
-    return user['real_name'] or user['name']
+    return user['name']
 
 
 def clean_text(text):
