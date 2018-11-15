@@ -49,6 +49,7 @@ def notify_slack(message):
         return
     channel = "#{}".format(CONFIG['post-channel'])
     message = message.replace("@channel", "<!channel|@channel>")
+    message = message.replace("@here", "<!here|@here>")
     slack.chat.post_message(channel, message, as_user=True)
 
 

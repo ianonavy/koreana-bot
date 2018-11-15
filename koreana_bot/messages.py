@@ -1,7 +1,7 @@
 
 MESSAGES = {
     'welcome': (
-        "Hey, @channel, it's Koreana Thursday! Please say your orders in this "
+        "Hey, @here, it's Koreana Thursday! Please say your orders in this "
         "channel. One menu item per person (no ordering for other people!). "
         "Please remember to specify kimchee/salad where appropriate. "
         "To change order, simply say your new order and I'll disregard the "
@@ -9,7 +9,7 @@ MESSAGES = {
         "at {deadline}. Enjoy!"
     ),
     'n minutes warning': (
-        "@channel Order closing in {minutes} minutes!"
+        "@here Order closing in {minutes} minutes!"
     ),
     'final changes': (
         "Last call for final changes. Here's the order so far:"
@@ -20,7 +20,7 @@ MESSAGES = {
         "person who is actually placing the order!"
     ),
     'closed': (
-        "@channel Here is the final order:"
+        "@here Here is the final order:"
     ),
     'total': (
         "The total comes out to ${subtotal:.2f} + ${tip:.2f} = "
