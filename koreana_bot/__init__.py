@@ -338,7 +338,7 @@ def clear_orders(orders):
 
 def handle_event(orders, event):
     text = event['text']
-    addressing_bot = '<@{}>:'.format(CONFIG['bot-user-id']) in text
+    addressing_bot = '<@{}>'.format(CONFIG['bot-user-id']) in text
     if re.search(r"what('| i)?s my order", text.lower()):
         notify_order(orders, event['user'])
     elif '@ordered' in text:
