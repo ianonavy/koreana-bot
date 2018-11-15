@@ -17,4 +17,5 @@ setup(name='koreana-bot',
           'pandas',
           'fuzzywuzzy',
           'python-levenshtein',
+          'pyyaml',
       ])

@@ -1,4 +1,5 @@
 import json
+import yaml
 import logging
 import math
 import re
@@ -15,10 +16,10 @@ from slacksocket import SlackSocket
 from koreana_bot.messages import MESSAGES
 
 
-with open('default_config.json') as default_config_file:
-    CONFIG = json.load(default_config_file)
-with open('config.json') as config_file:
-    CONFIG.update(json.load(config_file))
+with open('default_config.yaml') as default_config_file:
+    CONFIG = yaml.load(default_config_file)
+with open('config.yaml') as config_file:
+    CONFIG.update(yaml.load(config_file))
 
 
 SLACK_ENABLED = True

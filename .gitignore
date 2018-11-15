@@ -2,4 +2,5 @@
 .cache
 *.pyc
 *.swp
-config.json
+config.yaml
+.pytest_cache/
