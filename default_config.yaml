@@ -122,35 +122,49 @@ options:
     - 0
   - - salad
     - 0
+  - - "no side"
+    - 0
   Special B:
   - - kimchee
     - 0
   - - salad
+    - 0
+  - - "no side"
     - 0
   Galbi:
   - - kimchee
     - 0
   - - salad
     - 0
+  - - "no side"
+    - 0
   Bulgogi:
   - - kimchee
     - 0
   - - salad
+    - 0
+  - - "no side"
     - 0
   Salmon Teriyaki:
   - - kimchee
     - 0
   - - salad
     - 0
+  - - "no side"
+    - 0
   Chicken Teriyaki:
   - - kimchee
     - 0
   - - salad
     - 0
+  - - "no side"
+    - 0
   Vegetable Tempura:
   - - kimchee
     - 0
   - - salad
+    - 0
+  - - "no side"
     - 0
   Tuna:
   - - sushi
