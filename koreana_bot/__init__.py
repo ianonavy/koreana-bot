@@ -156,6 +156,8 @@ def get_item(text, user=None):
     else:
         return None
 
+def is_addressing_bot(message):
+    return '<@{}>'.format(CONFIG['bot-user-id']) in message
 
 def fetch_messages():
     oldest_timestamp = int(time.time()) - CONFIG['initial-window-seconds']
@@ -163,7 +165,7 @@ def fetch_messages():
     res = getattr(slack, group_type).history(group_id,
                                              oldest=oldest_timestamp,
                                              count=1000)
-    return reversed(res.body['messages'])
+    return reversed(filter(is_addressing_bot, res.body['messages']))
 
 
 def _order_changed(orders, user, item):
@@ -338,7 +340,7 @@ def clear_orders(orders):
 
 def handle_event(orders, event):
     text = event['text']
-    addressing_bot = '<@{}>'.format(CONFIG['bot-user-id']) in text
+    addressing_bot = is_addressing_bot(text)
     if re.search(r"what.?s my order", text.lower()):
         notify_order(orders, event['user'])
     elif '@ordered' in text:
