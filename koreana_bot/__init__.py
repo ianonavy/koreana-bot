@@ -196,6 +196,7 @@ def get_costs(orders):
     costs = pandas.DataFrame(order_list, columns=columns)
     costs['price'] = costs['item'].map(PRICES)
     costs['tax'] = costs['price'] * CONFIG['tax-rate']
+    costs['subtotal'] = costs['price'] + costs['tax']
     costs['tip'] = costs['price'] * CONFIG['tip-rate']
     costs['total'] = costs['price'] + costs['tax'] + costs['tip']
     return costs
